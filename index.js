@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({origin:["https://booking-backend-flax.vercel.app/","http://localhost:5000","https://ticket-booking-gray.vercel.app/"]}));
+app.use(cors({origin:["https://vercel.com/ayazalidharejos-projects/booking-backend","http://localhost:5000",""]}));
 app.use(express.json());
 
 // JWT Secret
@@ -189,11 +189,7 @@ const auth = function(req, res, next) {
   }
 };
 
-// ==================== ROUTES ====================
 
-// @route   POST api/users/register
-// @desc    Register a user
-// @access  Public
 app.post('/api/users/register', async (req, res) => {
   const { username, email, password } = req.body;
 
