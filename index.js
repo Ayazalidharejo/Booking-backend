@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({origin:["https://booking-backend-flax.vercel.app/","http://localhost:5000"]}));
 app.use(express.json());
 
 // JWT Secret
@@ -194,7 +194,7 @@ const auth = function(req, res, next) {
 // @route   POST api/users/register
 // @desc    Register a user
 // @access  Public
-app.post('/', async (req, res) => {
+app.post('/api/users/register', async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
@@ -725,9 +725,9 @@ app.patch('/api/bookings/:id/cancel', auth, async (req, res) => {
 });
 
 // Root route
-// app.get('/', (req, res) => {
-//   res.send('Welcome to the Event Booking System API');
-// });
+app.get('/', (req, res) => {
+  res.send('Welcome to the Event Booking System API');
+});
 
 // Start server
 const PORT = process.env.PORT || 5000;
