@@ -14,9 +14,10 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({origin:["https://booking-backend-xi.vercel.app","http://localhost:5000",""]}));
+app.use(cors({origin:["https://ticket-booking-gray.vercel.app","http://localhost:3000"]}));
 app.use(express.json());
 
+//https://ticket-booking-gray.vercel.app/
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
 
