@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({origin:["https://vercel.com/ayazalidharejos-projects/booking-backend","http://localhost:5000",""]}));
+app.use(cors({origin:["https://ticket-booking-gray.vercel.app/","http://localhost:5000",""]}));
 app.use(express.json());
 
 // JWT Secret
@@ -726,5 +726,5 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports= app;
