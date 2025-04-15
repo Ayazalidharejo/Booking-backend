@@ -14,18 +14,14 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: ["https://ticket-booking-gray.vercel.app", "http://localhost:5000"],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(cors({origin:["https://ticket-booking-gray.vercel.app","http://localhost:5000",""]}));
 app.use(express.json());
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
 
 // Connect to MongoDB
-mongoose.connect(`${process.env.DB_PASSWORD}`, {
+mongoose.connect(`mongodb+srv://ayazalixwave:${process.env.DB_PASSWORD}@cluster0.95kzp.mongodb.net/event_management?retryWrites=true&w=majority`, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -730,8 +726,5 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-module.exports =app ; 
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
