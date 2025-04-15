@@ -22,10 +22,7 @@ app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
 
 // Connect to MongoDB
-mongoose.connect(`mongodb+srv://ayazalixwave:${process.env.DB_PASSWORD}@cluster0.95kzp.mongodb.net/event_management?retryWrites=true&w=majority`, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.DB_PASSWORD)
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('Could not connect to MongoDB', err));
 
