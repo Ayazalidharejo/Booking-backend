@@ -819,7 +819,691 @@
 
 
 
-// File: server.js - All code in one file with SQLite3
+// // File: server.js - All code in one file with SQLite3
+// const express = require('express');
+// const cors = require('cors');
+// const dotenv = require('dotenv');
+// const jwt = require('jsonwebtoken');
+// const bcrypt = require('bcryptjs');
+// const sqlite3 = require('sqlite3').verbose();
+// const { open } = require('sqlite');
+// const path = require('path');
+
+// // Load environment variables
+// dotenv.config();
+
+// // Initialize express app
+// const app = express();
+
+// // Middleware
+// app.use(cors({origin:["https://ticket-booking-gray.vercel.app","http://localhost:3000"]}));
+// app.use(express.json());
+
+// // JWT Secret
+// const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
+
+// // Database setup
+// let db;
+
+// async function setupDatabase() {
+//   // Open database
+//   db = await open({
+//     filename: path.join(__dirname, 'database.sqlite'),
+//     driver: sqlite3.Database
+//   });
+
+//   // Create tables if they don't exist
+//   await db.exec(`
+//     CREATE TABLE IF NOT EXISTS users (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       username TEXT UNIQUE NOT NULL,
+//       email TEXT UNIQUE NOT NULL,
+//       password TEXT NOT NULL,
+//       date TEXT DEFAULT CURRENT_TIMESTAMP
+//     );
+
+//     CREATE TABLE IF NOT EXISTS events (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       name TEXT NOT NULL,
+//       description TEXT NOT NULL,
+//       date TEXT NOT NULL,
+//       location TEXT NOT NULL,
+//       createdBy INTEGER NOT NULL,
+//       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (createdBy) REFERENCES users(id)
+//     );
+
+//     CREATE TABLE IF NOT EXISTS tickets (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       eventName TEXT NOT NULL,
+//       ticketType TEXT NOT NULL,
+//       price REAL NOT NULL,
+//       availability INTEGER DEFAULT 10,
+//       eventId INTEGER NOT NULL,
+//       FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE
+//     );
+
+//     CREATE TABLE IF NOT EXISTS bookings (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       userId INTEGER NOT NULL,
+//       ticketId INTEGER NOT NULL,
+//       eventName TEXT NOT NULL,
+//       ticketType TEXT NOT NULL,
+//       quantity INTEGER DEFAULT 1,
+//       price REAL NOT NULL,
+//       status TEXT DEFAULT 'active',
+//       bookingDate TEXT DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (userId) REFERENCES users(id),
+//       FOREIGN KEY (ticketId) REFERENCES tickets(id)
+//     );
+//   `);
+
+//   console.log('Database setup complete');
+// }
+
+// // Initialize database
+// setupDatabase().catch(err => {
+//   console.error('Database setup failed:', err);
+//   process.exit(1);
+// });
+
+// // ==================== MIDDLEWARE ====================
+
+// // Auth Middleware
+// const auth = function(req, res, next) {
+//   // Get token from header
+//   const token = req.header('Authorization')?.replace('Bearer ', '');
+
+//   // Check if no token
+//   if (!token) {
+//     return res.status(401).json({ message: 'No token, authorization denied' });
+//   }
+
+//   // Verify token
+//   try {
+//     const decoded = jwt.verify(token, JWT_SECRET);
+//     req.user = decoded.user;
+//     next();
+//   } catch (err) {
+//     res.status(401).json({ message: 'Token is not valid' });
+//   }
+// };
+
+// // ==================== ROUTES ====================
+
+// // @route   POST api/users/register
+// // @desc    Register a user
+// // @access  Public
+// app.post('/api/users/register', async (req, res) => {
+//   const { username, email, password } = req.body;
+
+//   try {
+//     // Check if user already exists
+//     const userByEmail = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+//     if (userByEmail) {
+//       return res.status(400).json({ message: 'User already exists' });
+//     }
+
+//     // Check if username is taken
+//     const userByUsername = await db.get('SELECT * FROM users WHERE username = ?', [username]);
+//     if (userByUsername) {
+//       return res.status(400).json({ message: 'Username already taken' });
+//     }
+
+//     // Hash password
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     // Insert user
+//     const result = await db.run(
+//       'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+//       [username, email, hashedPassword]
+//     );
+
+//     // Create payload for JWT
+//     const payload = {
+//       user: {
+//         id: result.lastID
+//       }
+//     };
+
+//     // Generate JWT
+//     jwt.sign(
+//       payload,
+//       JWT_SECRET,
+//       { expiresIn: '7d' },
+//       (err, token) => {
+//         if (err) throw err;
+//         res.json({ 
+//           token,
+//           userId: result.lastID,
+//           username: username
+//         });
+//       }
+//     );
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   POST api/users/login
+// // @desc    Authenticate user & get token
+// // @access  Public
+// app.post('/api/users/login', async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     // Check if user exists
+//     const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+//     if (!user) {
+//       return res.status(400).json({ message: 'Invalid credentials' });
+//     }
+
+//     // Check password
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(400).json({ message: 'Invalid credentials' });
+//     }
+
+//     // Create payload for JWT
+//     const payload = {
+//       user: {
+//         id: user.id
+//       }
+//     };
+
+//     // Generate JWT
+//     jwt.sign(
+//       payload,
+//       JWT_SECRET,
+//       { expiresIn: '7d' },
+//       (err, token) => {
+//         if (err) throw err;
+//         res.json({ 
+//           token,
+//           userId: user.id,
+//           username: user.username
+//         });
+//       }
+//     );
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/users/me
+// // @desc    Get current user
+// // @access  Private
+// app.get('/api/users/me', auth, async (req, res) => {
+//   try {
+//     const user = await db.get('SELECT id, username, email, date FROM users WHERE id = ?', [req.user.id]);
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+//     res.json(user);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/events
+// // @desc    Get all events
+// // @access  Public
+// app.get('/api/events', async (req, res) => {
+//   try {
+//     const events = await db.all('SELECT * FROM events ORDER BY date ASC');
+    
+//     // For each event, get its tickets
+//     for (let event of events) {
+//       const tickets = await db.all('SELECT * FROM tickets WHERE eventId = ?', [event.id]);
+//       event.tickets = tickets;
+//     }
+    
+//     res.json(events);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/events/:id
+// // @desc    Get event by ID
+// // @access  Public
+// app.get('/api/events/:id', async (req, res) => {
+//   try {
+//     const event = await db.get('SELECT * FROM events WHERE id = ?', [req.params.id]);
+    
+//     if (!event) {
+//       return res.status(404).json({ message: 'Event not found' });
+//     }
+    
+//     // Get tickets for this event
+//     const tickets = await db.all('SELECT * FROM tickets WHERE eventId = ?', [event.id]);
+//     event.tickets = tickets;
+    
+//     res.json(event);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   POST api/events
+// // @desc    Create a new event
+// // @access  Private
+// app.post('/api/events', auth, async (req, res) => {
+//   const { name, description, date, location, tickets } = req.body;
+
+//   try {
+//     // Create new event
+//     const result = await db.run(
+//       'INSERT INTO events (name, description, date, location, createdBy) VALUES (?, ?, ?, ?, ?)',
+//       [name, description, date, location, req.user.id]
+//     );
+    
+//     const eventId = result.lastID;
+    
+//     // Create individual tickets
+//     for (const ticket of tickets) {
+//       await db.run(
+//         'INSERT INTO tickets (eventName, ticketType, price, availability, eventId) VALUES (?, ?, ?, ?, ?)',
+//         [name, ticket.ticketType, ticket.price, ticket.availability, eventId]
+//       );
+//     }
+    
+//     // Get the created event with tickets
+//     const event = await db.get('SELECT * FROM events WHERE id = ?', [eventId]);
+//     const eventTickets = await db.all('SELECT * FROM tickets WHERE eventId = ?', [eventId]);
+//     event.tickets = eventTickets;
+    
+//     res.json(event);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   PUT api/events/:id
+// // @desc    Update an event
+// // @access  Private
+// app.put('/api/events/:id', auth, async (req, res) => {
+//   const { name, description, date, location, tickets } = req.body;
+
+//   try {
+//     // Check if event exists and user is authorized
+//     const event = await db.get(
+//       'SELECT * FROM events WHERE id = ?', 
+//       [req.params.id]
+//     );
+    
+//     if (!event) {
+//       return res.status(404).json({ message: 'Event not found' });
+//     }
+    
+//     // Check user authorization
+//     if (event.createdBy !== req.user.id) {
+//       return res.status(401).json({ message: 'User not authorized' });
+//     }
+    
+//     // Update event
+//     await db.run(
+//       'UPDATE events SET name = ?, description = ?, date = ?, location = ? WHERE id = ?',
+//       [name, description, date, location, req.params.id]
+//     );
+    
+//     // Delete all existing tickets for this event
+//     await db.run('DELETE FROM tickets WHERE eventId = ?', [req.params.id]);
+    
+//     // Create new tickets
+//     for (const ticket of tickets) {
+//       await db.run(
+//         'INSERT INTO tickets (eventName, ticketType, price, availability, eventId) VALUES (?, ?, ?, ?, ?)',
+//         [name, ticket.ticketType, ticket.price, ticket.availability, req.params.id]
+//       );
+//     }
+    
+//     // Get updated event with tickets
+//     const updatedEvent = await db.get('SELECT * FROM events WHERE id = ?', [req.params.id]);
+//     const eventTickets = await db.all('SELECT * FROM tickets WHERE eventId = ?', [req.params.id]);
+//     updatedEvent.tickets = eventTickets;
+    
+//     res.json(updatedEvent);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   DELETE api/events/:id
+// // @desc    Delete an event
+// // @access  Private
+// app.delete('/api/events/:id', auth, async (req, res) => {
+//   try {
+//     // Check if event exists and user is authorized
+//     const event = await db.get(
+//       'SELECT * FROM events WHERE id = ?', 
+//       [req.params.id]
+//     );
+    
+//     if (!event) {
+//       return res.status(404).json({ message: 'Event not found' });
+//     }
+    
+//     // Check user authorization
+//     if (event.createdBy !== req.user.id) {
+//       return res.status(401).json({ message: 'User not authorized' });
+//     }
+    
+//     // Delete event (tickets will be deleted due to CASCADE)
+//     await db.run('DELETE FROM events WHERE id = ?', [req.params.id]);
+    
+//     res.json({ message: 'Event removed' });
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/tickets
+// // @desc    Get all tickets
+// // @access  Public
+// app.get('/api/tickets', async (req, res) => {
+//   try {
+//     const tickets = await db.all('SELECT * FROM tickets ORDER BY price ASC');
+//     res.json(tickets);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/tickets/:id
+// // @desc    Get ticket by ID
+// // @access  Public
+// app.get('/api/tickets/:id', async (req, res) => {
+//   try {
+//     const ticket = await db.get('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    
+//     if (!ticket) {
+//       return res.status(404).json({ message: 'Ticket not found' });
+//     }
+    
+//     res.json(ticket);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/tickets/event/:eventId
+// // @desc    Get tickets by event ID
+// // @access  Public
+// app.get('/api/tickets/event/:eventId', async (req, res) => {
+//   try {
+//     const tickets = await db.all('SELECT * FROM tickets WHERE eventId = ?', [req.params.eventId]);
+//     res.json(tickets);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   POST api/tickets
+// // @desc    Create a new ticket
+// // @access  Private
+// app.post('/api/tickets', auth, async (req, res) => {
+//   const { eventName, ticketType, price, availability, eventId } = req.body;
+
+//   try {
+//     // Check if event exists
+//     let eventName2 = eventName;
+//     if (eventId) {
+//       const event = await db.get('SELECT name FROM events WHERE id = ?', [eventId]);
+//       if (event) {
+//         eventName2 = event.name;
+//       }
+//     }
+    
+//     // Create new ticket
+//     const result = await db.run(
+//       'INSERT INTO tickets (eventName, ticketType, price, availability, eventId) VALUES (?, ?, ?, ?, ?)',
+//       [eventName2 || '', ticketType, price, availability, eventId]
+//     );
+    
+//     const ticket = await db.get('SELECT * FROM tickets WHERE id = ?', [result.lastID]);
+//     res.json(ticket);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   PUT api/tickets/:id
+// // @desc    Update ticket availability
+// // @access  Private
+// app.put('/api/tickets/:id', auth, async (req, res) => {
+//   const { availability } = req.body;
+
+//   try {
+//     // Check if ticket exists
+//     const ticket = await db.get('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    
+//     if (!ticket) {
+//       return res.status(404).json({ message: 'Ticket not found' });
+//     }
+    
+//     // Update ticket
+//     await db.run(
+//       'UPDATE tickets SET availability = ? WHERE id = ?',
+//       [availability, req.params.id]
+//     );
+    
+//     const updatedTicket = await db.get('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+//     res.json(updatedTicket);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/bookings
+// // @desc    Get all bookings for current user
+// // @access  Private
+// app.get('/api/bookings', auth, async (req, res) => {
+//   try {
+//     const bookings = await db.all(
+//       'SELECT * FROM bookings WHERE userId = ? ORDER BY bookingDate DESC',
+//       [req.user.id]
+//     );
+//     res.json(bookings);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   GET api/bookings/:id
+// // @desc    Get booking by ID
+// // @access  Private
+// app.get('/api/bookings/:id', auth, async (req, res) => {
+//   try {
+//     const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    
+//     if (!booking) {
+//       return res.status(404).json({ message: 'Booking not found' });
+//     }
+    
+//     // Verify user owns this booking
+//     if (booking.userId !== req.user.id) {
+//       return res.status(401).json({ message: 'User not authorized' });
+//     }
+    
+//     res.json(booking);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   POST api/bookings
+// // @desc    Create a new booking
+// // @access  Private
+// app.post('/api/bookings', auth, async (req, res) => {
+//   const { ticketId, quantity } = req.body;
+
+//   try {
+//     // Get ticket info
+//     const ticket = await db.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+//     if (!ticket) {
+//       return res.status(404).json({ message: 'Ticket not found' });
+//     }
+    
+//     // Check availability
+//     if (ticket.availability < quantity) {
+//       return res.status(400).json({ message: 'Not enough tickets available' });
+//     }
+    
+//     // Create booking
+//     const result = await db.run(
+//       'INSERT INTO bookings (userId, ticketId, eventName, ticketType, quantity, price) VALUES (?, ?, ?, ?, ?, ?)',
+//       [req.user.id, ticketId, ticket.eventName, ticket.ticketType, quantity, ticket.price * quantity]
+//     );
+    
+//     // Update ticket availability
+//     await db.run(
+//       'UPDATE tickets SET availability = availability - ? WHERE id = ?',
+//       [quantity, ticketId]
+//     );
+    
+//     const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [result.lastID]);
+//     res.json(booking);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // @route   PATCH api/bookings/:id/cancel
+// // @desc    Cancel a booking
+// // @access  Private
+// app.patch('/api/bookings/:id/cancel', auth, async (req, res) => {
+//   try {
+//     // Get booking
+//     const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    
+//     if (!booking) {
+//       return res.status(404).json({ message: 'Booking not found' });
+//     }
+    
+//     // Verify user owns this booking
+//     if (booking.userId !== req.user.id) {
+//       return res.status(401).json({ message: 'User not authorized' });
+//     }
+    
+//     // Check if already cancelled
+//     if (booking.status === 'cancelled') {
+//       return res.status(400).json({ message: 'Booking already cancelled' });
+//     }
+    
+//     // Update booking status
+//     await db.run(
+//       'UPDATE bookings SET status = ? WHERE id = ?',
+//       ['cancelled', req.params.id]
+//     );
+    
+//     // Restore ticket availability
+//     await db.run(
+//       'UPDATE tickets SET availability = availability + ? WHERE id = ?',
+//       [booking.quantity, booking.ticketId]
+//     );
+    
+//     const updatedBooking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+//     res.json(updatedBooking);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send('Server error');
+//   }
+// });
+
+// // Root route
+// app.get('/', (req, res) => {
+//   res.send('Welcome to the Event Booking System API (SQLite3 Version)');
+// });
+
+// // Start server
+// const PORT = process.env.PORT || 5000;
+// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// module.exports = app;
+
+// async function setupDatabase() {
+//   // Open database
+//   db = await open({
+//     filename: path.join(__dirname, 'database.sqlite'),
+//     driver: sqlite3.Database
+//   });
+
+//   // Create tables if they don't exist
+//   await db.exec(`
+//     CREATE TABLE IF NOT EXISTS users (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       username TEXT UNIQUE NOT NULL,
+//       email TEXT UNIQUE NOT NULL,
+//       password TEXT NOT NULL,
+//       isAdmin BOOLEAN DEFAULT 0,
+//       date TEXT DEFAULT CURRENT_TIMESTAMP
+//     );
+
+//     CREATE TABLE IF NOT EXISTS events (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       name TEXT NOT NULL,
+//       description TEXT NOT NULL,
+//       date TEXT NOT NULL,
+//       location TEXT NOT NULL,
+//       createdBy INTEGER NOT NULL,
+//       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (createdBy) REFERENCES users(id)
+//     );
+
+//     CREATE TABLE IF NOT EXISTS tickets (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       eventName TEXT NOT NULL,
+//       ticketType TEXT NOT NULL,
+//       price REAL NOT NULL,
+//       availability INTEGER DEFAULT 10,
+//       eventId INTEGER NOT NULL,
+//       FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE
+//     );
+
+//     CREATE TABLE IF NOT EXISTS bookings (
+//       id INTEGER PRIMARY KEY AUTOINCREMENT,
+//       userId INTEGER NOT NULL,
+//       ticketId INTEGER NOT NULL,
+//       eventName TEXT NOT NULL,
+//       ticketType TEXT NOT NULL,
+//       quantity INTEGER DEFAULT 1,
+//       price REAL NOT NULL,
+//       status TEXT DEFAULT 'active',
+//       bookingDate TEXT DEFAULT CURRENT_TIMESTAMP,
+//       FOREIGN KEY (userId) REFERENCES users(id),
+//       FOREIGN KEY (ticketId) REFERENCES tickets(id)
+//     );
+//   `);
+
+//   console.log('Database setup complete');
+// }
+
+// Initialize database
+
+
+
+
+
+
+// File: server.js with Admin Implementation
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -837,13 +1521,20 @@ const app = express();
 
 // Middleware
 app.use(cors({origin:["https://ticket-booking-gray.vercel.app","http://localhost:3000"]}));
+
+
 app.use(express.json());
 
 // JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
+const JWT_SECRET = process.env.JWT_SECRET ;
+
+// Admin access key (should be in .env file)
+const ADMIN_ACCESS_KEY = process.env.ADMIN_ACCESS_KEY;
 
 // Database setup
 let db;
+
+
 
 async function setupDatabase() {
   // Open database
@@ -852,7 +1543,7 @@ async function setupDatabase() {
     driver: sqlite3.Database
   });
 
-  // Create tables if they don't exist
+  // Create users table agar nahi bani hui
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -861,7 +1552,18 @@ async function setupDatabase() {
       password TEXT NOT NULL,
       date TEXT DEFAULT CURRENT_TIMESTAMP
     );
+  `);
 
+  // ✅ Check agar isAdmin column missing hai to add karo
+  const columns = await db.all(`PRAGMA table_info(users);`);
+  const hasIsAdmin = columns.some(col => col.name === 'isAdmin');
+  if (!hasIsAdmin) {
+    console.log("Adding missing isAdmin column...");
+    await db.exec(`ALTER TABLE users ADD COLUMN isAdmin BOOLEAN DEFAULT 0;`);
+  }
+
+  // Baaki tables
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -898,10 +1600,9 @@ async function setupDatabase() {
     );
   `);
 
-  console.log('Database setup complete');
+  console.log('✅ Database setup complete');
 }
 
-// Initialize database
 setupDatabase().catch(err => {
   console.error('Database setup failed:', err);
   process.exit(1);
@@ -929,15 +1630,57 @@ const auth = function(req, res, next) {
   }
 };
 
+// Admin Middleware
+const adminAuth = async function(req, res, next) {
+  try {
+    // First verify the user is authenticated
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded.user;
+    
+    // Check if user is admin
+    const user = await db.get('SELECT isAdmin FROM users WHERE id = ?', [req.user.id]);
+    
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+    
+    next();
+  } catch (err) {
+    console.error(err.message);
+    res.status(401).json({ message: 'Admin authorization failed' });
+  }
+};
+
 // ==================== ROUTES ====================
 
 // @route   POST api/users/register
-// @desc    Register a user
+// @desc    Register a user (with optional admin role)
+// @access  Public
+// @route   POST api/users/register
+// @desc    Register a user (with optional admin role via access key)
 // @access  Public
 app.post('/api/users/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, role, accessKey } = req.body;
 
   try {
+    // Validate role input
+    if (role !== 'user' && role !== 'admin') {
+      return res.status(400).json({ message: 'Invalid role. Must be "user" or "admin".' });
+    }
+
+    // If role is admin, accessKey must be provided and correct
+    if (role === 'admin') {
+      if (!accessKey || accessKey !== ADMIN_ACCESS_KEY) {
+        return res.status(403).json({ message: 'Access key is required and must be valid for admin registration.' });
+      }
+    }
+
     // Check if user already exists
     const userByEmail = await db.get('SELECT * FROM users WHERE email = ?', [email]);
     if (userByEmail) {
@@ -954,16 +1697,20 @@ app.post('/api/users/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Determine isAdmin based on role
+    const isAdmin = role === 'admin';
+
     // Insert user
     const result = await db.run(
-      'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-      [username, email, hashedPassword]
+      'INSERT INTO users (username, email, password, isAdmin) VALUES (?, ?, ?, ?)',
+      [username, email, hashedPassword, isAdmin ? 1 : 0]
     );
 
     // Create payload for JWT
     const payload = {
       user: {
-        id: result.lastID
+        id: result.lastID,
+        isAdmin: isAdmin
       }
     };
 
@@ -974,10 +1721,11 @@ app.post('/api/users/register', async (req, res) => {
       { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
-        res.json({ 
+        res.json({
           token,
           userId: result.lastID,
-          username: username
+          username: username,
+          isAdmin: isAdmin
         });
       }
     );
@@ -986,6 +1734,14 @@ app.post('/api/users/register', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+
+
+
+
+
+
+
+
 
 // @route   POST api/users/login
 // @desc    Authenticate user & get token
@@ -1009,7 +1765,8 @@ app.post('/api/users/login', async (req, res) => {
     // Create payload for JWT
     const payload = {
       user: {
-        id: user.id
+        id: user.id,
+        isAdmin: user.isAdmin === 1
       }
     };
 
@@ -1023,7 +1780,8 @@ app.post('/api/users/login', async (req, res) => {
         res.json({ 
           token,
           userId: user.id,
-          username: user.username
+          username: user.username,
+          isAdmin: user.isAdmin === 1
         });
       }
     );
@@ -1038,11 +1796,42 @@ app.post('/api/users/login', async (req, res) => {
 // @access  Private
 app.get('/api/users/me', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, username, email, date FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, username, email, isAdmin, date FROM users WHERE id = ?', [req.user.id]);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET api/admin/users
+// @desc    Get all users
+// @access  Admin only
+app.get('/api/admin/users', adminAuth, async (req, res) => {
+  try {
+    const users = await db.all('SELECT id, username, email, isAdmin, date FROM users ORDER BY date DESC');
+    res.json(users);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET api/admin/bookings
+// @desc    Get all bookings
+// @access  Admin only
+app.get('/api/admin/bookings', adminAuth, async (req, res) => {
+  try {
+    const bookings = await db.all(`
+      SELECT b.*, u.username 
+      FROM bookings b
+      JOIN users u ON b.userId = u.id
+      ORDER BY b.bookingDate DESC
+    `);
+    res.json(bookings);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -1092,9 +1881,9 @@ app.get('/api/events/:id', async (req, res) => {
 });
 
 // @route   POST api/events
-// @desc    Create a new event
-// @access  Private
-app.post('/api/events', auth, async (req, res) => {
+// @desc    Create a new event (admin only)
+// @access  Admin only
+app.post('/api/events', adminAuth, async (req, res) => {
   const { name, description, date, location, tickets } = req.body;
 
   try {
@@ -1127,13 +1916,13 @@ app.post('/api/events', auth, async (req, res) => {
 });
 
 // @route   PUT api/events/:id
-// @desc    Update an event
-// @access  Private
-app.put('/api/events/:id', auth, async (req, res) => {
+// @desc    Update an event (admin only)
+// @access  Admin only
+app.put('/api/events/:id', adminAuth, async (req, res) => {
   const { name, description, date, location, tickets } = req.body;
 
   try {
-    // Check if event exists and user is authorized
+    // Check if event exists
     const event = await db.get(
       'SELECT * FROM events WHERE id = ?', 
       [req.params.id]
@@ -1141,11 +1930,6 @@ app.put('/api/events/:id', auth, async (req, res) => {
     
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    // Check user authorization
-    if (event.createdBy !== req.user.id) {
-      return res.status(401).json({ message: 'User not authorized' });
     }
     
     // Update event
@@ -1178,11 +1962,11 @@ app.put('/api/events/:id', auth, async (req, res) => {
 });
 
 // @route   DELETE api/events/:id
-// @desc    Delete an event
-// @access  Private
-app.delete('/api/events/:id', auth, async (req, res) => {
+// @desc    Delete an event (admin only)
+// @access  Admin only
+app.delete('/api/events/:id', adminAuth, async (req, res) => {
   try {
-    // Check if event exists and user is authorized
+    // Check if event exists
     const event = await db.get(
       'SELECT * FROM events WHERE id = ?', 
       [req.params.id]
@@ -1190,11 +1974,6 @@ app.delete('/api/events/:id', auth, async (req, res) => {
     
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    // Check user authorization
-    if (event.createdBy !== req.user.id) {
-      return res.status(401).json({ message: 'User not authorized' });
     }
     
     // Delete event (tickets will be deleted due to CASCADE)
@@ -1252,9 +2031,9 @@ app.get('/api/tickets/event/:eventId', async (req, res) => {
 });
 
 // @route   POST api/tickets
-// @desc    Create a new ticket
-// @access  Private
-app.post('/api/tickets', auth, async (req, res) => {
+// @desc    Create a new ticket (admin only)
+// @access  Admin only
+app.post('/api/tickets', adminAuth, async (req, res) => {
   const { eventName, ticketType, price, availability, eventId } = req.body;
 
   try {
@@ -1282,9 +2061,9 @@ app.post('/api/tickets', auth, async (req, res) => {
 });
 
 // @route   PUT api/tickets/:id
-// @desc    Update ticket availability
-// @access  Private
-app.put('/api/tickets/:id', auth, async (req, res) => {
+// @desc    Update ticket availability (admin only)
+// @access  Admin only
+app.put('/api/tickets/:id', adminAuth, async (req, res) => {
   const { availability } = req.body;
 
   try {
@@ -1336,8 +2115,8 @@ app.get('/api/bookings/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
     
-    // Verify user owns this booking
-    if (booking.userId !== req.user.id) {
+    // Verify user owns this booking or is admin
+    if (booking.userId !== req.user.id && !req.user.isAdmin) {
       return res.status(401).json({ message: 'User not authorized' });
     }
     
@@ -1398,8 +2177,8 @@ app.patch('/api/bookings/:id/cancel', auth, async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
     
-    // Verify user owns this booking
-    if (booking.userId !== req.user.id) {
+    // Verify user owns this booking or is admin
+    if (booking.userId !== req.user.id && !req.user.isAdmin) {
       return res.status(401).json({ message: 'User not authorized' });
     }
     
@@ -1430,11 +2209,52 @@ app.patch('/api/bookings/:id/cancel', auth, async (req, res) => {
 
 // Root route
 app.get('/', (req, res) => {
-  res.send('Welcome to the Event Booking System API (SQLite3 Version)');
+  res.send('Welcome to the Event Booking System API with Admin Features');
 });
 
+
+
+app.delete('/events/:id', async (req, res) => {
+  try {
+    const event = await Event.findByIdAndDelete(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    res.json({ message: 'Event deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete event' });
+  }
+});
+
+
+
+// Add this to your server.js before setupDatabase()
+const fs = require('fs');
+const dbPath = path.join(__dirname, 'database.sqlite');
+
+// Check if database directory exists, if not create it
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+// Check database file permissions
+try {
+  const dbExists = fs.existsSync(dbPath);
+  if (dbExists) {
+    console.log('Database file exists');
+    // Try to access the file
+    fs.accessSync(dbPath, fs.constants.R_OK | fs.constants.W_OK);
+    console.log('Database file is readable and writable');
+  } else {
+    console.log('Database file does not exist and will be created');
+  }
+} catch (err) {
+  console.error('Database file permission error:', err);
+}
+
 // Start server
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
