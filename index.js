@@ -1515,6 +1515,7 @@ const path = require('path');
 
 // Load environment variables
 dotenv.config();
+require('dotenv').config();
 
 // Initialize express app
 const app = express();
@@ -2254,7 +2255,7 @@ try {
 }
 
 // Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// const PORT = process.env.PORT || 5000;
+// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
