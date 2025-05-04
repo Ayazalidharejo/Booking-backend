@@ -1512,10 +1512,9 @@ const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
-
+let db;
 // Load environment variables
 dotenv.config();
-require('dotenv').config();
 
 // Initialize express app
 const app = express();
@@ -1533,7 +1532,7 @@ const JWT_SECRET = process.env.JWT_SECRET ;
 const ADMIN_ACCESS_KEY = process.env.ADMIN_ACCESS_KEY;
 
 // Database setup
-let db;
+
 
 
 
